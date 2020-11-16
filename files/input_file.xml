@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tourists>
+    <count>3</count>
+    <tourist>
+        <name>Maks</name>
+        <items>
+            <item>4</item>
+            <item>3</item>
+            <item>2</item>
+            <item>1</item>
+        </items>
+    </tourist>
+    <tourist>
+        <name>Dima</name>
+        <items>
+            <item>8</item>
+            <item>3</item>
+            <item>6</item>
+            <item>10</item>
+        </items>
+    </tourist>
+    <tourist>
+        <name>Kate</name>
+        <items>
+            <item>12</item>
+            <item>7</item>
+        </items>
+    </tourist>
+</tourists>

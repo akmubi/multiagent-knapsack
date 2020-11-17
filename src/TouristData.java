@@ -16,6 +16,22 @@ public class TouristData {
 		return this.items;
 	}
 
+	public Object[] getItemObjects() {
+		Object[] casted = new Object[this.items.length];
+		for (int i = 0; i < this.items.length; ++i) {
+			casted[i] = this.items[i];
+		}
+		return casted;
+	}
+
+	public void setItemObjects(Object[] casted) {
+		int[] new_items = new int[casted.length];
+		for (int i = 0; i < casted.length; ++i) {
+			new_items[i] = (int)casted[i];
+		}
+		this.items = new_items;
+	}
+
 	public String getName() {
 		return this.name;
 	}

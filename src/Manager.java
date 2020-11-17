@@ -10,16 +10,41 @@ import java.util.Scanner;
 
 public class Manager extends Agent {
 	private TouristData[] tourist_data = new TouristData[0];
+
+	private double calculateAverage() {
+		double average = 0.0;
+		for (TouristData data : this.tourist_data) {
+			int[] items = data.getItems();
+			for (int item : items) average += item;
+		}
+		average /= this.tourist_data.length;
+		return average;
+	}
+
+	// Подготовка весов и среднего к отправке туристу
+	private Object[] prepareArguments(TouristData data, double average) {
+		int[] items = data.getItems();
+		Object[] args = new Object[items.length + 1];
+		args[0] = average;
+		for (int i = 0; i < items.length; ++i) {
+			args[i + 1] = items[i];
+		}
+		return args;
+	}
+
 	protected void setup() {
 		tourist_data = this.input("files/input_file.txt");
 
 		for (TouristData data : tourist_data)
 			System.out.println(getLocalName() + " : " + data.toString());
 
+		double average = this.calculateAverage();
+
 		try {
 			AgentContainer container = getContainerController();
 			for (TouristData data : tourist_data) {
-				AgentController agent = container.createNewAgent(data.getName(), "Tourist", null);
+				Object[] args = this.prepareArguments(data, average);
+				AgentController agent = container.createNewAgent(data.getName(), "Tourist", args);
 				agent.start();
 			}
 		} catch (Exception e) {
@@ -27,8 +52,9 @@ public class Manager extends Agent {
 			e.printStackTrace();
 		}
 
+/*
 		// передача значения среднего веса каждому туристу
-		addBehaviour(new Broadcast(tourist_data));
+		addBehaviour(new Broadcast(tourist_data));*/
 
 		// Регистрация в DF
 		DFUtilities.register(this, "manager");
@@ -149,6 +175,7 @@ public class Manager extends Agent {
     }
 }
 
+/*
 class Broadcast extends SimpleBehaviour {
 	private int step = 0;
 
@@ -207,4 +234,4 @@ class Broadcast extends SimpleBehaviour {
 	public boolean done() {
 		return this.step >= 2;
 	}
-}
+}*/

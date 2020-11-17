@@ -14,15 +14,19 @@ public class Tourist extends Agent {
 	// (-1) - сумма весов меньше среднего среди рюкзаков
 	// ( 0) - сумма весов равна среднему среди рюкзаков
 	// ( 1) - сумма весов больше среднего среди рюкзаков
-	private int weight_comparison = 0;
+//	private int weight_comparison = 0;
 
 	public double getAverage() {
 		return this.average;
 	}
+
 	public int[] getWeights() {
 		return this.tourist_data.getItems();
 	}
-	public void setWeights(int[] new_weights) { this.tourist_data.setItems(new_weights);}
+
+	public void setWeights(int[] new_weights) {
+		this.tourist_data.setItems(new_weights);
+	}
 
 	protected void setup() {
 		this.tourist_data = new TouristData();
@@ -93,24 +97,307 @@ public class Tourist extends Agent {
 
 		// Регистрация и определения дальшейшего поведения туриста
 		addBehaviour(new SimpleBehaviour(this) {
-			private boolean registered = false;
+//			private boolean registered = false;
+			private int step = 0;
+			private int difference = 0;
+			private String service_type = "";
+			private int weight_comparison = 0;
+			private int[] weights = new int[0];
+			private ArrayList<Integer> additional_weights = new ArrayList<>();
+			private int agents_count = 0;
+			private int current_index = 0;
+
+			private int getSum() {
+				int sum = 0;
+				for (int weight : this.weights) {
+					sum += weight;
+				}
+				for (int weight : this.additional_weights) {
+					sum += weight;
+				}
+				return sum;
+			}
+
+			private int searchWeight(int key) {
+				for (int i = 0; i < this.weights.length; ++i) {
+					if (weights[i] == key) {
+						return i;
+					}
+				}
+				return -1;
+			}
+
+			private void mergeArrays() {
+				int[] new_weights = new int[this.weights.length + this.additional_weights.size()];
+				System.arraycopy(this.weights, 0, new_weights, 0, this.weights.length);
+				for (int i = 0; i < this.additional_weights.size(); ++i) {
+					new_weights[i + this.weights.length] = this.additional_weights.get(i);
+				}
+				this.weights = new_weights;
+				System.out.println("weights = " + Arrays.toString(this.weights));
+			}
+
+			private void deleteZeroWeights() {
+				int targetIndex = 0;
+				for (int sourceIndex = 0;  sourceIndex < this.weights.length;  sourceIndex++)
+				{
+					if( this.weights[sourceIndex] != 0 )
+						this.weights[targetIndex++] = this.weights[sourceIndex];
+				}
+				int[] newArray = new int[targetIndex];
+				System.arraycopy( this.weights, 0, newArray, 0, targetIndex );
+				this.weights = newArray;
+			}
+
 			@Override
 			public void action() {
 				String name = this.myAgent.getLocalName();
-				System.out.println(name + " : Данные получены, начало регистрации");
-				int[] weights = tourist_data.getItems();
-				double weight_sum = Arrays.stream(weights).sum();
-				String service_type = "";
-				if (weight_sum > average) {
-					weight_comparison = 1;
-					service_type = "overflow";
-				} else if (weight_sum < average) {
-					weight_comparison = -1;
-					service_type = "lack";
+				switch(this.step) {
+					case 0 -> {
+						this.step = 4;
+						System.out.println(name + " : Данные получены, начало регистрации");
+						this.weights = tourist_data.getItems();
+						double weight_sum = Arrays.stream(weights).sum();
+						if (weight_sum > average) {
+							this.weight_comparison = 1;
+							this.service_type = "overflow";
+						} else if (weight_sum < average) {
+							this.weight_comparison = -1;
+							this.service_type = "lack";
+						}
+
+						if (this.weight_comparison != 0) {
+							this.difference = Math.abs(getSum() - (int)average);
+							DFUtilities.register(this.myAgent, this.service_type);
+							System.out.println(name + ": Зарегистрирован как " + service_type);
+							System.out.println(name + " : переход к шагу 1");
+							this.step = 1;
+						}
+					}
+					case 1 -> {
+						if (this.weight_comparison == -1) {
+							if (difference > 0) {
+								System.out.println(name + " : разница больше нуля (" + difference + ")");
+								System.out.println(name + " : поиск overflow туристов");
+
+								// Находим туристов, у которых есть предмет с весом difference
+								AID[] potential_helpers = DFUtilities.searchService(this.myAgent, "overflow");
+								ACLMessage message = new ACLMessage(ACLMessage.CFP);
+								this.agents_count = potential_helpers.length;
+								for (AID helper : potential_helpers) {
+									message.addReceiver(helper);
+								}
+								System.out.println(name + " : отправка разницы (" + difference + ")");
+								message.setContent(Integer.toString(difference));
+								message.setConversationId("helping");
+								this.myAgent.send(message);
+								this.step = 2;
+							}
+							if (difference == 0) {
+								System.out.println(name + " : разница равна 0 (" + difference + ")");
+								System.out.println(name + " : слияние массива " + Arrays.toString(this.weights) + " и списка " + this.additional_weights);
+								System.out.println(name + " : удаление записи о lack регистрации");
+								DFUtilities.deregister(this.myAgent);
+								System.out.println(name + " : normal регистрация");
+								DFUtilities.register(this.myAgent, "normal");
+								System.out.println(name + " : переход к шагу 3");
+								mergeArrays();
+								this.step = 3;
+							}
+						} else if (this.weight_comparison == 1) {
+							if ((int)average - getSum() > 0) {
+								System.out.println(name + " : сумма весов " + ((int)average - getSum()) + "меньше среднего (" + average + "). Смена поведения");
+								this.weight_comparison = -1;
+								break;
+							}
+
+							ACLMessage request = this.myAgent.receive();
+							if (request != null) {
+								System.out.println(name + " : получено сообщение");
+								if (request.getConversationId().equals("helping")) {
+									System.out.println(name + " : запрос на вес " + request.getContent());
+									ACLMessage reply = new ACLMessage(ACLMessage.PROPOSE);
+									int index = searchWeight(Integer.parseInt(request.getContent()));
+									if (index == -1) {
+										System.out.println(name + " : такого веса нет");
+										reply.setContent("-1");
+									} else {
+										System.out.println(name + " : есть такой вес");
+										reply.setContent(request.getContent());
+									}
+									reply.setConversationId("helping");
+									reply.addReceiver(request.getSender());
+									System.out.println(name + " : отправка ответа");
+									this.myAgent.send(reply);
+								}
+
+								if (request.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+									System.out.println(name + " : ответ на принятие запроса");
+									int index = searchWeight(Integer.parseInt(request.getContent()));
+									System.out.println(name + " : удаление веса " + this.weights[index]);
+									this.weights[index] = 0;
+									deleteZeroWeights();
+								}
+							}
+
+							AID[] lack_agents = DFUtilities.searchService(this.myAgent, "lack");
+							System.out.println(name + " : поиск lack туристов");
+							this.agents_count = lack_agents.length;
+							if (this.agents_count == 0) {
+								System.out.println(name + " : lack туристов больше нет");
+								System.out.println(name + " : переход к шагу 2");
+								this.step = 2;
+							}
+						}
+					}
+					case 2 -> {
+						if (this.weight_comparison == -1) {
+							ACLMessage reply = this.myAgent.receive();
+							if (reply != null) {
+								if (reply.getPerformative() == ACLMessage.PROPOSE) {
+									System.out.println(name + " : получено сообщение на запрос");
+									if (reply.getContent().equals("-1")) {
+										System.out.println(name + " : запрос отклонен");
+										this.agents_count--;
+									} else {
+										System.out.println(name + " : получен вес " + reply.getContent());
+										int new_weight = Integer.parseInt(reply.getContent());
+										this.additional_weights.add(new_weight);
+
+										System.out.println(name + " : ответ на принятие запроса");
+										ACLMessage accept = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+										accept.setContent(Integer.toString(new_weight));
+										accept.addReceiver(reply.getSender());
+										accept.setConversationId("accepting");
+										this.myAgent.send(accept);
+
+										this.difference = Math.abs(getSum() - (int)average);
+										System.out.println(name + " : разница теперь - " + this.difference);
+										System.out.println(name + " : переход к шагу 1");
+										this.step = 1;
+									}
+								}
+							}
+
+							if (this.agents_count == 0) {
+								System.out.println(name + " : все запросы отклонены. Уменьшение разницы");
+								this.difference--;
+								System.out.println(name + " : Переход к шагу 1");
+								this.step = 1;
+							}
+						} else if (this.weight_comparison == 1) {
+							if (this.current_index == this.weights.length || Math.abs(this.difference) < 2) {
+								System.out.println(name + " : текущий индекс - " + this.current_index);
+								System.out.println(name + " : разница - " + this.difference);
+								System.out.println(name + " : удаление лишних нулей, если они есть");
+								deleteZeroWeights();
+								System.out.println(name + " : переход к шагу 4");
+								this.step = 4;
+								break;
+							}
+							this.difference = Math.abs(getSum() - this.weights[this.current_index] - (int)average);
+							System.out.println(name + " : разница без веса с текущим индексом - " + this.difference);
+							System.out.println(name + " : отправка запроса всем normal туристам");
+							AID[] potential_helpers = DFUtilities.searchService(this.myAgent, "normal");
+							ACLMessage message = new ACLMessage(ACLMessage.CFP);
+							this.agents_count = potential_helpers.length;
+							for (AID helper : potential_helpers) {
+								message.addReceiver(helper);
+							}
+							message.setContent(Integer.toString(difference));
+							this.myAgent.send(message);
+							System.out.println(name + " : переход к шагу 3");
+							this.step = 3;
+						}
+					}
+
+					case 3 -> {
+						// Обмен предметами
+						if (weight_comparison == -1) {
+							ACLMessage message = this.myAgent.receive();
+							if (message != null) {
+								int performative = message.getPerformative();
+								System.out.println(name + " : получено сообщение");
+								if (performative == ACLMessage.CFP) {
+									System.out.println(name + " : получен запрос на обмен с весом " + message.getContent());
+									int searched_weight = Integer.parseInt(message.getContent());
+									int index = searchWeight(searched_weight);
+									ACLMessage reply = new ACLMessage(ACLMessage.PROPOSE);
+//									reply.setContent(message.getContent());
+									reply.addReceiver(message.getSender());
+
+									if (index == -1) {
+										System.out.println(name + " : такого веса нет");
+										reply.setContent("-1");
+									} else {
+										System.out.println(name + " : удаление веса из своего рюкзака");
+										reply.setContent(message.getContent());
+										this.weights[index] = -1;
+									}
+									System.out.println(name + " : ответ на запрос");
+									this.myAgent.send(reply);
+								}
+								if (performative == ACLMessage.ACCEPT_PROPOSAL) {
+									System.out.println(name + " : получение ответа на ответ на запрос");
+									int index = searchWeight(-1);
+									this.weights[index] = Integer.parseInt(message.getContent());
+									System.out.println(name + " : получен вес " + this.weights[index]);
+								}
+							}
+							AID[] agents = DFUtilities.searchService(this.myAgent, "overflow");
+							if (agents.length == 0) {
+								System.out.println(name + " : нет overflow туристов");
+								System.out.println(name + " : переход к шагу 4");
+								this.step = 4;
+							}
+						} else if (weight_comparison == 1) {
+							ACLMessage reply = this.myAgent.receive();
+							if (reply != null) {
+								if (reply.getPerformative() == ACLMessage.PROPOSE) {
+									System.out.println(name + " : получено сообщение с ответом на запрос");
+									if (reply.getContent().equals("-1")) {
+										System.out.println(name + " : запрос отклонен");
+										this.agents_count--;
+									} else {
+										System.out.println(name + " : запрос принят");
+//									int new_weight = Integer.parseInt();
+//									this.additional_weights.add(new_weight);
+
+										ACLMessage accept = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+										accept.setContent(Integer.toString(this.weights[this.current_index]));
+										System.out.println(name + " : отправка веса " + this.weights[this.current_index]);
+										accept.addReceiver(reply.getSender());
+										accept.setConversationId("accepting");
+										this.myAgent.send(accept);
+
+										this.weights[this.current_index] = Integer.parseInt(reply.getContent());
+										System.out.println(name + " : новый вес " + this.weights[this.current_index]);
+										System.out.println(name + " : переход к шагу 2");
+										this.step = 2;
+									}
+								}
+							}
+
+							if (this.agents_count == 0) {
+								System.out.println(name + " : все запросы отклонены");
+								this.current_index++;
+								System.out.println(name + " : текущий индекс " + this.current_index);
+								System.out.println(name + " : переход к шагу 2");
+								this.step = 2;
+							}
+						}
+					}
+					case 4 -> {
+						System.out.println(name + " : удаление записи о регистрации");
+						DFUtilities.deregister(this.myAgent);
+						System.out.println(name + " : конец работы");
+						this.step = 5;
+					}
 				}
 
+
 				// Проводим регистрацию, только если есть либо нехватка, либо переполение
-				if (weight_comparison != 0) {
+				/*if (weight_comparison != 0) {
 					DFUtilities.register(this.myAgent, service_type);
 					this.registered = true;
 					System.out.println(name + ": Зарегистрирован как " + service_type);
@@ -321,12 +608,17 @@ public class Tourist extends Agent {
 								return false;
 							}
 						});
-				}
+				}*/
 			}
 
 			@Override
 			public boolean done() {
-				return registered;
+				if (this.step == 5) {
+					tourist_data.setItems(this.weights);
+					doDelete();
+					return true;
+				}
+				return false;
 			}
 		});
 

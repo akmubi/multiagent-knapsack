@@ -40,12 +40,13 @@ public class ClientMain extends Agent {
 				System.out.print(local_name + ": " + message);
 				if (e != null) {
 					String exception_message = e.getMessage();
-					if (!exception_message.equals("")) {
+					if (!exception_message.equals(""))
 						System.out.print("(" + exception_message + ")");
-					}
+					System.out.println();
 					e.printStackTrace();
+				} else {
+					System.out.println();
 				}
-				System.out.println();
 				doDelete();
 				this.step = 0;
 			}
@@ -257,7 +258,5 @@ public class ClientMain extends Agent {
 				return this.step == 0;
 			}
 		});
-
 	}
 }
-

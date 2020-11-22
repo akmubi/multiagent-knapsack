@@ -52,15 +52,13 @@ public class ClientMain extends Agent {
 			}
 
 			// приём сообщения (строка)
-			private String receiveString(MessageTemplate template) {
-				ACLMessage message = blockingReceive(template);
-				return message.getContent();
+			private String receiveString() {
+				return ACLUtilities.blockingReceiveString(this.myAgent, this.template);
 			}
 
 			// приём сообщения (целое число)
-			private int receiveInteger(MessageTemplate template) {
-				String content = receiveString(template);
-				return Integer.parseInt(content);
+			private int receiveInteger() {
+				return ACLUtilities.blockingReceiveInteger(this.myAgent, this.template);
 			}
 
 			@Override
@@ -146,7 +144,7 @@ public class ClientMain extends Agent {
 					}
 					case 4 -> {
 						// Ожидание ответа от сервера (с уже распределенными весами)
-						String content = receiveString(this.template);
+						String content = receiveString();
 						if (content.equals("results")) {
 							// Если сервер сообщил о том, что
 							// собирается отправлять результаты
@@ -184,7 +182,7 @@ public class ClientMain extends Agent {
 
 						// Получение количества туристов
 						try {
-							tourist_count = receiveInteger(this.template);
+							tourist_count = receiveInteger();
 						} catch (NumberFormatException e) {
 							handleException(e, "ошибка! получено некорректное значение числа туристов");
 							break;
@@ -195,12 +193,12 @@ public class ClientMain extends Agent {
 
 						for (int i = 0; i < tourist_count; ++i) {
 							// Получение имени туриста
-							String tourist_name = receiveString(this.template);
+							String tourist_name = receiveString();
 
 							// Получение количества предметов
 							int items_count;
 							try {
-								items_count = receiveInteger(this.template);
+								items_count = receiveInteger();
 							} catch (NumberFormatException e) {
 								handleException(e, "ошибка! получено некорректное значение числа предметов");
 								break;
@@ -212,12 +210,12 @@ public class ClientMain extends Agent {
 							// Получение предметов
 							for (int j = 0; j < items_count; ++j) {
 								// Получение названия предмета
-								String item_name = receiveString(this.template);
+								String item_name = receiveString();
 								int item_weight, item_count;
 
 								// Получение веса предмета
 								try {
-									item_weight = receiveInteger(this.template);
+									item_weight = receiveInteger();
 								} catch (NumberFormatException e) {
 									handleException(e, "ошибка! получено некорректное значение веса предмета");
 									break;
@@ -225,7 +223,7 @@ public class ClientMain extends Agent {
 
 								// Получение количества предмета
 								try {
-									item_count = receiveInteger(this.template);
+									item_count = receiveInteger();
 								} catch (NumberFormatException e) {
 									handleException(e, "ошибка! получено некорректное значение количества предмета");
 									break;

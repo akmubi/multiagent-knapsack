@@ -1,6 +1,6 @@
 public class Item {
-	private String name;
-	private int weight;
+	protected String name;
+	protected int weight;
 
 	public Item(String name, int weight) {
 		this.name = name;
@@ -14,4 +14,5 @@ public class Item {
 	public int getWeight() {
 		return this.weight;
 	}
+
 }

@@ -20,20 +20,17 @@ public class ClientMain extends Agent {
 		IOUtility io_utility = new IOUtility(input_filename, output_filename);
 		ArrayList<TouristItem> items = io_utility.readItems();
 
-		// Подсчёт количества предметов
-		int items_count = items.size();
-
 		addBehaviour(new SimpleBehaviour(this) {
 			// текущий шаг
 			private int step = 1;
 			// идентификатор сервера
 			private AID server;
-			// идентификатор переписки
-			private String conversation_Id;
 			// шаблон для приёма сообщений от сервера
 			private MessageTemplate template;
 			// выходные данные (имена туристов и их предметы)
-			private TouristData[] tourist_data = new TouristData[0];
+			private ArrayList<TouristData> tourist_data;
+
+			private int tourists_count = 0;
 
 			// обработка исключения
 			private void handleException(Exception e, String message) {
@@ -51,16 +48,6 @@ public class ClientMain extends Agent {
 				this.step = 0;
 			}
 
-			// приём сообщения (строка)
-			private String receiveString() {
-				return ACLUtilities.blockingReceiveString(this.myAgent, this.template);
-			}
-
-			// приём сообщения (целое число)
-			private int receiveInteger() {
-				return ACLUtilities.blockingReceiveInteger(this.myAgent, this.template);
-			}
-
 			@Override
 			public void action() {
 				switch (this.step) {
@@ -68,7 +55,6 @@ public class ClientMain extends Agent {
 						// Связь с сервером
 						ACLMessage connection_message = new ACLMessage(ACLMessage.INFORM);
 						connection_message.addReceiver(new AID("server", false));
-						connection_message.setContent("connection");
 						connection_message.setConversationId("connection");
 						this.myAgent.send(connection_message);
 
@@ -89,44 +75,14 @@ public class ClientMain extends Agent {
 						// Иначе запоминаем идентификатор переписки и отправителя
 						// и переходим к следующему шагу
 						this.server = reply.getSender();
-						this.conversation_Id = reply.getConversationId();
 						this.step = 2;
 					}
 					case 2 -> {
-						/*
-						 *   Формат отправки начальных данных:
-						 *    Количество предметов (n)
-						 *        Название предмета 1/n
-						 *        Название предмета 2/n
-						 *        ...
-						 *        Название предмета n/n
-						 *        Вес предмета 1/n
-						 *        Вес предмета 2/n
-						 *        ...
-						 *        Вес предмета n/n
-						 * */
-
-						// Описание сообщения
-						ACLMessage item_message = new ACLMessage(ACLMessage.INFORM);
-						item_message.addReceiver(this.server);
-						item_message.setConversationId(this.conversation_Id);
-
-						// Отправка количества предметов
-						item_message.setContent(Integer.toString(items_count));
-						this.myAgent.send(item_message);
-
-						// Отправка названий предметов
-						for (TouristItem item : items) {
-							item_message.setContent(item.getName());
-							this.myAgent.send(item_message);
-						}
-
-						// Отправка весов предметов
-						for (TouristItem item : items) {
-							String item_weight = Integer.toString(item.getWeight());
-							item_message.setContent(item_weight);
-							this.myAgent.send(item_message);
-						}
+						// Отправка предметов
+						ACLMessage items_message = new ACLMessage(ACLMessage.INFORM);
+						items_message.addReceiver(this.server);
+						items_message.setContent(TouristItem.toString(items));
+						this.myAgent.send(items_message);
 
 						// Переход к следующему шагу
 						this.step = 3;
@@ -144,10 +100,19 @@ public class ClientMain extends Agent {
 					}
 					case 4 -> {
 						// Ожидание ответа от сервера (с уже распределенными весами)
-						String content = receiveString();
-						if (content.equals("results")) {
+						ACLMessage inform = this.myAgent.blockingReceive(this.template);
+						String conversation_Id = inform.getConversationId();
+						String content = inform.getContent();
+						if (conversation_Id.equals("results")) {
 							// Если сервер сообщил о том, что
 							// собирается отправлять результаты
+							try {
+								// Получаем количество туристов
+								this.tourists_count = Integer.parseInt(content);
+							} catch (NumberFormatException e) {
+								handleException(e, "ошибка при получении количества туристов");
+								break;
+							}
 							this.step = 5;
 						} else {
 							// Иначе просто выводим сообщение
@@ -155,94 +120,24 @@ public class ClientMain extends Agent {
 						}
 					}
 					case 5 -> {
-						/*
-						 *   Формат приёма конечных данных:
-						 *    Количество туристов (n)
-						 *        Имя 1-го туриста 1/n
-						 *        Количество предметов у 1-го туриста (m_1)
-						 *            Название 1-го предмета 1/m_1
-						 *            Вес 1-го предмета 1/m_1
-						 *            Количество 1-го предмета 1/m_1
-						 *            ...
-						 *            Название m_1-го предмета m_1/m_1
-						 *            Вес m_1-го предмета m_1/m_1
-						 *            Количество 2-го предмета m_1/m_1
-						 *        ...
-						 *	  Имя n-го туриста n/n
-						 *        Количество предметов у n-го туриста (m_n)
-						 *            Название 1-го предмета 1/m_n
-						 *            Вес 1-го предмета 1/m_n
-						 *            Количество 1-го предмета 1/m_n
-						 *            ...
-						 *            Название m_n-го предмета m_n/m_n
-						 *            Вес m_n-го предмета m_n/m_n
-						 *            Количество 2-го предмета m_n/m_n
-						 * */
-						int tourist_count;
-
-						// Получение количества туристов
+						ACLMessage results = this.myAgent.blockingReceive(this.template);
 						try {
-							tourist_count = receiveInteger();
-						} catch (NumberFormatException e) {
-							handleException(e, "ошибка! получено некорректное значение числа туристов");
+							// Добавляем полученные данные в список
+							this.tourist_data.add(TouristData.parseTouristData(results.getContent()));
+						} catch (Exception e) {
+							handleException(e, "ошибка при получении результатов");
 							break;
 						}
 
-						// создание выходного массива данных о туристах
-						tourist_data = new TouristData[tourist_count];
-
-						for (int i = 0; i < tourist_count; ++i) {
-							// Получение имени туриста
-							String tourist_name = receiveString();
-
-							// Получение количества предметов
-							int items_count;
-							try {
-								items_count = receiveInteger();
-							} catch (NumberFormatException e) {
-								handleException(e, "ошибка! получено некорректное значение числа предметов");
-								break;
-							}
-
-							// Подготовка списка предметов
-							ArrayList<TouristItem> items = new ArrayList<>();
-
-							// Получение предметов
-							for (int j = 0; j < items_count; ++j) {
-								// Получение названия предмета
-								String item_name = receiveString();
-								int item_weight, item_count;
-
-								// Получение веса предмета
-								try {
-									item_weight = receiveInteger();
-								} catch (NumberFormatException e) {
-									handleException(e, "ошибка! получено некорректное значение веса предмета");
-									break;
-								}
-
-								// Получение количества предмета
-								try {
-									item_count = receiveInteger();
-								} catch (NumberFormatException e) {
-									handleException(e, "ошибка! получено некорректное значение количества предмета");
-									break;
-								}
-
-								// Добавление предмета в список
-								items.add(new TouristItem(item_name, item_weight, item_count));
-							}
-
-							// Добавление туриста в массив
-							tourist_data[i] = new TouristData(tourist_name, items);
+						// Как только получим результаты всех туристов
+						if (this.tourist_data.size() == this.tourists_count) {
+							// Переходим к следующему шагу
+							this.step = 6;
 						}
-
-						// Переход к следующему шагу
-						this.step = 6;
 					}
 					case 6 -> {
 						// Сохранение полученных данных в файл
-						io_utility.writeItems(tourist_data);
+						io_utility.writeItems(this.tourist_data);
 
 						// Завершение работы
 						doDelete();

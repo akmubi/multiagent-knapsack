@@ -27,7 +27,7 @@ public class IOUtility {
 		return this.reader_writer.read(this.input_filename);
 	}
 
-	public void writeItems(TouristData[] tourist_data) {
+	public void writeItems(ArrayList<TouristData> tourist_data) {
 		this.reader_writer.write(tourist_data, this.output_filename);
 	}
 }

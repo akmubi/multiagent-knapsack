@@ -29,16 +29,21 @@ public class Main {
 			} catch (StaleProxyException e) {
 				e.printStackTrace();
 			}
-		} else if (args.length == 0) {
+		} else if (args.length == 1) {
 			// [Серверная часть]
 			// Установка названия главного контейнера
 			profile.setParameter(Profile.CONTAINER_NAME, "ServerContainer");
 
 			// Создание главного контейнера
 			AgentContainer container = runtime.createMainContainer(profile);
+
+			// Названия входного файла (с именами туристов)
+			Object[] server_args = new Object[1];
+			server_args[0] = args[0];
+
 			// Создание и запуск серверной части
 			try {
-				AgentController server = container.createNewAgent("server", "ServerMain", null);
+				AgentController server = container.createNewAgent("server", "ServerMain", server_args);
 				server.start();
 			} catch (StaleProxyException e) {
 				e.printStackTrace();

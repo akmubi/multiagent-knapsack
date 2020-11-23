@@ -19,7 +19,7 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 		ArrayList<TouristItem> input_items = new ArrayList<>();
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(input_filename));
-			String line = "";
+			String line;
 			int single_item_count = 0;
 			try {
 				while ( (line = reader.readLine()) != null ) {
@@ -63,7 +63,7 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 	}
 
 	@Override
-	public void write(TouristData[] tourist_data, String output_filename) {
+	public void write(ArrayList<TouristData> tourist_data, String output_filename) {
 		/*
 		 *   <> - название поля
 		 *   [] - необязательное поле

@@ -21,7 +21,7 @@ public class TouristItem extends  Item {
 	public static ArrayList<TouristItem> unzip(ArrayList<TouristItem> items) {
 		ArrayList<TouristItem> new_items = new ArrayList<>();
 		for (TouristItem item : items) {
-			for (int i = 1; i < item.count; ++i) {
+			for (int i = 0; i < item.count; ++i) {
 				TouristItem new_item = new TouristItem(item.name, item.weight);
 				new_items.add(new_item);
 			}
@@ -40,6 +40,31 @@ public class TouristItem extends  Item {
 		return -1;
 	}
 
+	static int searchByWeight(ArrayList<TouristItem> items, int weight) {
+		int items_count = items.size();
+		for (int i = 0; i < items_count; ++i) {
+			int item_weight = items.get(i).weight;
+			if (item_weight == weight) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	// нахождение наибольшего веса, который не превышает заданный
+	static int searchMaxNotExceed(ArrayList<TouristItem> items, int weight) {
+		int max = -1;
+		int index = -1;
+		for (int i = 0; i < items.size(); ++i) {
+			int item_weight = items.get(i).weight;
+			if (item_weight <= weight && item_weight > max) {
+				max = item_weight;
+				index = i;
+			}
+		}
+		return index;
+	}
+
 	// слияние копий предметов
 	public static ArrayList<TouristItem> zip(ArrayList<TouristItem> items) {
 		ArrayList<TouristItem> new_items = new ArrayList<>();
@@ -54,13 +79,8 @@ public class TouristItem extends  Item {
 		return new_items;
 	}
 
-	public static double calculateAverage(ArrayList<TouristItem> items) {
-		double average = 0.0;
-		for (TouristItem item : items) {
-			average += item.weight;
-		}
-		average /= items.size();
-		return average;
+	public static double calculateAverage(ArrayList<TouristItem> items, int tourist_count) {
+		return TouristItem.getSum(items) / (1.0 * tourist_count);
 	}
 
 	public static ArrayList<TouristItem> parseTouristItems(String content) throws Exception {
@@ -96,5 +116,17 @@ public class TouristItem extends  Item {
 			}
 		}
 		return builder.toString();
+	}
+
+	public static int getSum(Iterable<TouristItem> items) {
+		int sum = 0;
+		for (TouristItem item : items) {
+			sum += item.weight * item.count;
+		}
+		return sum;
+	}
+
+	public static double getAverage(ArrayList<TouristItem> items) {
+		return TouristItem.getSum(items) / (1.0 * items.size());
 	}
 }

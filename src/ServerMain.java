@@ -16,13 +16,16 @@ import java.util.ArrayList;
 
 public class ServerMain extends Agent {
 	protected void setup() {
+		String local_name = getLocalName();
 		Object[] args = getArguments();
 
 		// файл с именами туристов
 		String input_filename = args[0].toString();
+		System.out.println(local_name + ": название файла с именами - " + input_filename);
 
 		// чтение имен туристов (и соответственно их количества)
 		ArrayList<String> tourist_names = readTouristNames(input_filename);
+		System.out.println(local_name + ": имена - " + tourist_names.toString());
 
 		addBehaviour(new HandleClientsBehaviour(this, tourist_names));
 	}
@@ -45,11 +48,11 @@ public class ServerMain extends Agent {
 					names.add(line);
 				}
 			} catch (IOException e) {
-				System.out.println("Ошибка при чтении файла - " + input_filename);
 				e.printStackTrace();
 			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
+			doDelete();
 		}
 		return names;
 	}
@@ -67,6 +70,8 @@ class HandleClientsBehaviour extends CyclicBehaviour {
 		MessageTemplate.MatchExpression expression = (MessageTemplate.MatchExpression) message -> {
 			int performative = message.getPerformative();
 			String conversation_Id = message.getConversationId();
+			if (conversation_Id == null)
+				return false;
 			return  performative == ACLMessage.INFORM &&
 					conversation_Id.equals("connection");
 		};
@@ -75,17 +80,23 @@ class HandleClientsBehaviour extends CyclicBehaviour {
 
 	@Override
 	public void action() {
+		String local_name = this.myAgent.getLocalName();
 		// ожидание получения сообщения от клиента
+		System.out.println(local_name + ": ожидание запроса от клиентов");
 		ACLMessage connection_message = this.myAgent.receive(this.client_message_template);
 		if (connection_message != null) {
 			AID current_client = connection_message.getSender();
+			System.out.println(local_name + ": получен запрос на подключение от " + current_client.getName());
 
 			// создание отдельного поведения для этого клиента
+			System.out.println(local_name + ": создание отдельного поведения");
 			this.myAgent.addBehaviour(new SingleClientBehaviour(this.myAgent, current_client, this.tourist_names));
 
 			// отправка сообщения о подлкючении
+			System.out.println(local_name + ": отправка сообщения о успешном подключении");
 			ACLMessage connected_message = new ACLMessage(ACLMessage.INFORM);
 			connected_message.setContent("connected");
+			connected_message.addReceiver(current_client);
 			this.myAgent.send(connected_message);
 		} else {
 			// добавление в очередь для заблокированных агентов и
@@ -94,7 +105,6 @@ class HandleClientsBehaviour extends CyclicBehaviour {
 		}
 	}
 }
-
 
 class SingleClientBehaviour extends SimpleBehaviour {
 	private int step;
@@ -117,9 +127,9 @@ class SingleClientBehaviour extends SimpleBehaviour {
 		// описание шаблона для получения сообщений от клиента
 		MatchExpression expression = (MatchExpression) message -> {
 			int performative = message.getPerformative();
-			AID sender = message.getSender();
+			String sender = message.getSender().getName();
 			return  performative == ACLMessage.INFORM &&
-					sender == this.client;
+					sender.equals(this.client.getName());
 		};
 		this.template =  new MessageTemplate(expression);
 	}
@@ -129,15 +139,18 @@ class SingleClientBehaviour extends SimpleBehaviour {
 		switch (this.step) {
 			case 1 -> {
 				// получение предметов
+				System.out.println(local_name + ": получение предметов...");
 				ACLMessage items_message = this.myAgent.receive(this.template);
 
 				if (items_message != null) {
 					try {
 						this.items = TouristItem.parseTouristItems(items_message.getContent());
+						System.out.println(local_name + ": получено " + this.items.size() + " предметов");
+						System.out.println(local_name + ": предметы - " + items_message.getContent());
 						// unzipping
 						this.items = TouristItem.unzip(this.items);
+						System.out.println(local_name + ": предметы после 'распаковки' - " + TouristItem.toString(this.items));
 					} catch (Exception e) {
-						System.out.println(local_name + ": ошибка при чтении количества предметов");
 						e.printStackTrace();
 						this.step = 0;
 						break;
@@ -151,6 +164,7 @@ class SingleClientBehaviour extends SimpleBehaviour {
 			}
 			case 2 -> {
 				// Распределение весов
+				System.out.println(local_name + ": начальное распределение весов");
 				int items_count = this.items.size();
 				int tourists_count = this.tourist_names.size();
 				int items_per_tourist = items_count / tourists_count;
@@ -186,8 +200,12 @@ class SingleClientBehaviour extends SimpleBehaviour {
 				// Создание и запуск агентов (туристов)
 				try {
 					AgentContainer container = this.myAgent.getContainerController();
+					System.out.println(local_name + ": вычисление среднего...");
+					double average = TouristItem.calculateAverage(this.items, tourists_count);
+					System.out.println(local_name + ": среднее - " + average);
+
+					System.out.println(local_name + ": запуск " + tourists_count + " агентов");
 					for (int i = 0; i < tourists_count; ++i) {
-						double average = TouristItem.calculateAverage(this.items);
 
 						// костыль
 						Object[] args = new Object[2];
@@ -197,12 +215,10 @@ class SingleClientBehaviour extends SimpleBehaviour {
 						// создание агента
 						String tourist_name = this.tourist_names.get(i);
 						AgentController tourist = container.createNewAgent(tourist_name, "Tourist", args);
-
 						// запуск агента
 						tourist.start();
 					}
 				} catch (Exception e) {
-					System.out.println(local_name + ": ошибка при создании агентов");
 					e.printStackTrace();
 					this.step = 0;
 					break;
@@ -228,15 +244,16 @@ class SingleClientBehaviour extends SimpleBehaviour {
 			}
 			case 4 -> {
 				// получения сообщения от агентов
+				System.out.println(local_name + ": ожидание сообщения от агентов...");
 				ACLMessage tourist_message = this.myAgent.receive(this.template);
 				if (tourist_message != null) {
+					System.out.println(local_name + ": получено сообщение от " + tourist_message.getSender().getLocalName());
 					String content = tourist_message.getContent();
 					String sender_name = tourist_message.getSender().getLocalName();
 					try {
 						ArrayList<TouristItem> received_items = TouristItem.parseTouristItems(content);
 						this.tourist_data.add(new TouristData(sender_name, received_items));
 					} catch (Exception e) {
-						System.out.println(local_name + ": ошибка при получении весов");
 						e.printStackTrace();
 						this.step = 0;
 						break;
@@ -248,11 +265,13 @@ class SingleClientBehaviour extends SimpleBehaviour {
 				if (this.tourist_data.size() == this.tourist_names.size()) {
 					// если получены все количества то,
 					// переходим к следующему шагу
+					System.out.println(local_name + ": получены сообщения от всех агентов");
 					this.step = 5;
 				}
 			}
 			case 5 -> {
 				// сообщения клиенту о том, начале отправки результатов
+				System.out.println(local_name + ": отправка результатов " + this.client.getName());
 				ACLMessage inform = new ACLMessage(ACLMessage.INFORM);
 				inform.addReceiver(this.client);
 				inform.setConversationId("results");
@@ -274,6 +293,7 @@ class SingleClientBehaviour extends SimpleBehaviour {
 				}
 
 				// завершение работы
+				System.out.println(local_name + ": конец обработки клиента " + this.client.getName() + " закончена");
 				this.step = 0;
 			}
 		}

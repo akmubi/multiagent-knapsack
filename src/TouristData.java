@@ -21,10 +21,6 @@ public class TouristData {
 		return this.items;
 	}
 
-	public double calculateAverage() {
-		return TouristItem.calculateAverage(items);
-	}
-
 	public TouristData getZipped() {
 		return new TouristData(this.name, TouristItem.zip(this.items));
 	}

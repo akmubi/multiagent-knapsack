@@ -20,9 +20,9 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(input_filename));
 			String line;
-			int single_item_count = 0;
 			try {
 				while ( (line = reader.readLine()) != null ) {
+					int single_item_count = 1;
 					String[] separated = line.split(" ");
 					if (separated.length == 3) {
 						// чтение количества текущего предмета
@@ -32,7 +32,6 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 								throw new Exception();
 							}
 						} catch (Exception e) {
-							System.out.println("Ошибка при чтении количества предметов");
 							e.printStackTrace();
 						}
 					} else if (separated.length < 2) {
@@ -46,13 +45,11 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 							TouristItem new_item = new TouristItem(separated[0], weight, single_item_count);
 							input_items.add(new_item);
 						} catch (Exception e) {
-							System.out.println("Ошибка при чтении веса предмета - '" + separated[0] + "'");
 							e.printStackTrace();
 						}
 				}
 				reader.close();
 			} catch (IOException e) {
-				System.out.println("Ошибка при чтении файла " + input_filename);
 				e.printStackTrace();
 			}
 

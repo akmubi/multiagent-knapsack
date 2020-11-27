@@ -1,9 +1,11 @@
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.AgentContainer;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.MessageTemplate.MatchExpression;
+import jade.wrapper.StaleProxyException;
 
 import java.util.ArrayList;
 
@@ -31,7 +33,7 @@ public class ClientMain extends Agent {
 			// шаблон для приёма сообщений от сервера
 			private MessageTemplate template;
 			// выходные данные (имена туристов и их предметы)
-			private ArrayList<TouristData> tourist_data;
+			private final ArrayList<TouristData> tourist_data = new ArrayList<>();
 
 			private int tourists_count = 0;
 
@@ -91,9 +93,9 @@ public class ClientMain extends Agent {
 						// (приём сообщений только от сервера)
 						MatchExpression expression = (MatchExpression) message -> {
 							int performative = message.getPerformative();
-							AID sender = message.getSender();
+							String sender_name = message.getSender().getName();
 							return  performative == ACLMessage.INFORM &&
-									sender == server;
+									sender_name.equals(server.getName());
 						};
 						this.template = new MessageTemplate(expression);
 						this.step = 4;
@@ -144,7 +146,8 @@ public class ClientMain extends Agent {
 
 						// Завершение работы
 						System.out.println(local_name + ": завершение работы");
-						doDelete();
+
+						this.myAgent.doDelete();
 						this.step = 0;
 					}
 				}
@@ -155,5 +158,15 @@ public class ClientMain extends Agent {
 				return this.step == 0;
 			}
 		});
+	}
+
+	protected void takeDown() {
+		try {
+			System.out.println(getLocalName() + ": удаление контейнера...");
+			getContainerController().kill();
+		} catch (StaleProxyException e) {
+			e.printStackTrace();
+		}
+		System.exit(0);
 	}
 }

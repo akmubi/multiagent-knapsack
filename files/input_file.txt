@@ -1,8 +1,10 @@
-Item1 4
-Item2 3 2
-Item3 2
-Item4 6
-Item5 7
-Item6 8
-Item7 10
-Item8 12
+Milk 13 3
+Bread 9 6
+Water 8 10
+Juice 10 7
+Apple 3 4
+Sausages 2 9
+Compass 4 6
+Map 8 9
+Tent 14 3
+Pan 10 2

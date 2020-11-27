@@ -1,7 +1,12 @@
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.AgentDescriptor;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.SequentialBehaviour;
 import jade.core.behaviours.SimpleBehaviour;
+import jade.domain.AMSService;
+import jade.domain.FIPAAgentManagement.AMSAgentDescription;
+import jade.domain.FIPAAgentManagement.SearchConstraints;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.MessageTemplate.MatchExpression;
@@ -82,7 +87,6 @@ class HandleClientsBehaviour extends CyclicBehaviour {
 	public void action() {
 		String local_name = this.myAgent.getLocalName();
 		// ожидание получения сообщения от клиента
-		System.out.println(local_name + ": ожидание запроса от клиентов");
 		ACLMessage connection_message = this.myAgent.receive(this.client_message_template);
 		if (connection_message != null) {
 			AID current_client = connection_message.getSender();
@@ -241,18 +245,18 @@ class SingleClientBehaviour extends SimpleBehaviour {
 				};
 				this.template = new MessageTemplate(expression);
 				this.step = 4;
+				System.out.println(local_name + ": ожидание сообщения от агентов...");
 			}
 			case 4 -> {
 				// получения сообщения от агентов
-				System.out.println(local_name + ": ожидание сообщения от агентов...");
 				ACLMessage tourist_message = this.myAgent.receive(this.template);
 				if (tourist_message != null) {
 					System.out.println(local_name + ": получено сообщение от " + tourist_message.getSender().getLocalName());
 					String content = tourist_message.getContent();
 					String sender_name = tourist_message.getSender().getLocalName();
 					try {
-						ArrayList<TouristItem> received_items = TouristItem.parseTouristItems(content);
-						this.tourist_data.add(new TouristData(sender_name, received_items));
+						TouristData data = TouristData.parseTouristData(content);
+						this.tourist_data.add(data);
 					} catch (Exception e) {
 						e.printStackTrace();
 						this.step = 0;
@@ -288,12 +292,12 @@ class SingleClientBehaviour extends SimpleBehaviour {
 					TouristData zipped = data.getZipped();
 
 					// [Имя туриста] [Название предмета 1] [Вес предмета 1] [Количество предмета 1] ...
-					results.setContent(zipped.toString());
+					results.setContent(TouristData.toString(zipped));
 					this.myAgent.send(results);
 				}
 
 				// завершение работы
-				System.out.println(local_name + ": конец обработки клиента " + this.client.getName() + " закончена");
+				System.out.println(local_name + ": конец обработки клиента " + this.client.getName());
 				this.step = 0;
 			}
 		}

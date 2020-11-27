@@ -52,7 +52,7 @@ public class TouristItem extends  Item {
 	}
 
 	// нахождение наибольшего веса, который не превышает заданный
-	static int searchMaxNotExceed(ArrayList<TouristItem> items, int weight) {
+	public static int searchMaxNotExceed(ArrayList<TouristItem> items, int weight) {
 		int max = -1;
 		int index = -1;
 		for (int i = 0; i < items.size(); ++i) {

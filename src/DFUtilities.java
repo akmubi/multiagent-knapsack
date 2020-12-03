@@ -28,22 +28,6 @@ class DFUtilities {
 		return new AID[0];
 	}
 
-	// Нахождение первого попавшегося агента, предоставляющего сервис
-	public static AID getService(Agent agent, String service_type) {
-		DFAgentDescription desc = new DFAgentDescription();
-		ServiceDescription service_desc = new ServiceDescription();
-		service_desc.setType(service_type);
-		desc.addServices(service_desc);
-		try {
-			DFAgentDescription[] result = DFService.search(agent, desc);
-			if (result.length > 0)
-				return result[0].getName();
-		} catch (FIPAException e) {
-			e.printStackTrace();
-		}
-		return null;
-	}
-
 	public static void deregister(Agent agent) {
 		try {
 			DFService.deregister(agent);
@@ -62,7 +46,21 @@ class DFUtilities {
 		try {
 			DFService.register(agent, desc);
 		} catch (FIPAException e) {
-			System.out.println(agent.getLocalName() + " : ошибка при регистрации");
+			e.printStackTrace();
+		}
+	}
+
+	public static void addService(Agent agent, String service_type) {
+		DFAgentDescription desc = new DFAgentDescription();
+		desc.setName(agent.getAID());
+		try {
+			DFAgentDescription[] agents = DFService.search(agent, desc);
+			ServiceDescription service_desc = new ServiceDescription();
+			service_desc.setType(service_type);
+			service_desc.setName(agent.getLocalName());
+			agents[0].addServices(service_desc);
+			DFService.modify(agent, agents[0]);
+		} catch (FIPAException e) {
 			e.printStackTrace();
 		}
 	}

@@ -1,17 +1,14 @@
+import jade.content.lang.sl.SLCodec;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.AgentDescriptor;
 import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.SequentialBehaviour;
 import jade.core.behaviours.SimpleBehaviour;
-import jade.domain.AMSService;
-import jade.domain.FIPAAgentManagement.AMSAgentDescription;
-import jade.domain.FIPAAgentManagement.SearchConstraints;
+import jade.domain.FIPANames;
+import jade.domain.JADEAgentManagement.JADEManagementOntology;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.MessageTemplate.MatchExpression;
-import jade.wrapper.AgentContainer;
-import jade.wrapper.AgentController;
+import jade.wrapper.*;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -21,6 +18,10 @@ import java.util.ArrayList;
 
 public class ServerMain extends Agent {
 	protected void setup() {
+		// регистрируем язык и онтологию
+		getContentManager().registerLanguage(new SLCodec(), FIPANames.ContentLanguage.FIPA_SL0);
+		getContentManager().registerOntology(JADEManagementOntology.getInstance());
+
 		String local_name = getLocalName();
 		Object[] args = getArguments();
 
@@ -95,6 +96,7 @@ class HandleClientsBehaviour extends CyclicBehaviour {
 			// создание отдельного поведения для этого клиента
 			System.out.println(local_name + ": создание отдельного поведения");
 			this.myAgent.addBehaviour(new SingleClientBehaviour(this.myAgent, current_client, this.tourist_names));
+
 
 			// отправка сообщения о подлкючении
 			System.out.println(local_name + ": отправка сообщения о успешном подключении");
@@ -177,25 +179,32 @@ class SingleClientBehaviour extends SimpleBehaviour {
 
 				if (items_per_tourist == 0) {
 					for (int i = 0; i < items_count; ++i) {
-						TouristItem[] tourist_items = new TouristItem[1];
-						tourist_items[0] = this.items.get(i);
-						tourist_args[i] = tourist_items;
+						ArrayList<TouristItem> tourist_items = new ArrayList<>();
+						tourist_items.add(this.items.get(i));
+						TouristData data = new TouristData(this.tourist_names.get(i), tourist_items);
+						this.tourist_data.add(data);
 					}
 					for (int i = items_count; i < tourists_count; ++i) {
-						tourist_args[i] = new TouristItem[0];
+						ArrayList<TouristItem> tourist_items = new ArrayList<>();
+						TouristData data = new TouristData(this.tourist_names.get(i), tourist_items);
+						this.tourist_data.add(data);
 					}
+					this.step = 5;
+					break;
 				} else {
 					for (int i = 0; i < tourists_count; ++i) {
-						int tourist_items_count = items_per_tourist;
-
 						// последнему туристу достаётся остаток предметов
-						if (i == tourists_count - 1) {
-							tourist_items_count += items_count % tourists_count;
+						int additional = 0;
+						if (i < items_count % tourists_count) {
+							additional++;
 						}
 
-						TouristItem[] tourist_items = new TouristItem[tourist_items_count];
-						for (int j = 0; j < tourist_items_count; ++j) {
+						TouristItem[] tourist_items = new TouristItem[items_per_tourist + additional];
+						for (int j = 0; j < items_per_tourist; ++j) {
 							tourist_items[j] = this.items.get(i * items_per_tourist + j);
+						}
+						if (i < items_count % tourists_count) {
+							tourist_items[items_per_tourist] = this.items.get(items_per_tourist * tourists_count + i);
 						}
 						tourist_args[i] = tourist_items;
 					}
@@ -210,11 +219,11 @@ class SingleClientBehaviour extends SimpleBehaviour {
 
 					System.out.println(local_name + ": запуск " + tourists_count + " агентов");
 					for (int i = 0; i < tourists_count; ++i) {
-
 						// костыль
-						Object[] args = new Object[2];
+						Object[] args = new Object[3];
 						args[0] = average;
 						args[1] = tourist_args[i];
+						args[2] = i;
 
 						// создание агента
 						String tourist_name = this.tourist_names.get(i);
@@ -227,7 +236,6 @@ class SingleClientBehaviour extends SimpleBehaviour {
 					this.step = 0;
 					break;
 				}
-
 
 				// переход к следующему шагу
 				this.step = 3;
@@ -253,7 +261,7 @@ class SingleClientBehaviour extends SimpleBehaviour {
 				if (tourist_message != null) {
 					System.out.println(local_name + ": получено сообщение от " + tourist_message.getSender().getLocalName());
 					String content = tourist_message.getContent();
-					String sender_name = tourist_message.getSender().getLocalName();
+					System.out.println(local_name + ": " + content);
 					try {
 						TouristData data = TouristData.parseTouristData(content);
 						this.tourist_data.add(data);

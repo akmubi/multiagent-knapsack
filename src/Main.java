@@ -8,23 +8,24 @@ public class Main {
 		Runtime runtime = Runtime.instance();
 		Profile profile = new ProfileImpl();
 
-		if (args.length == 3) {
+		if (args.length == 4) {
 			// [Клиенская часть]
 			// Настройка создаваемого контейнера
 			System.out.println("main : создание клиентского контейнера");
 			profile.setParameter(Profile.CONTAINER_NAME, "ClientContainer");
 			System.out.println("main : адрес главного контейнера - " + args[0]);
 			profile.setParameter(Profile.MAIN_HOST, args[0]);
+			profile.setParameter(Profile.MAIN_PORT, args[1]);
 
 			// Создание контейнера
 			AgentContainer container = runtime.createAgentContainer(profile);
 
 			// Названия входного и выходного файлов
 			Object[] client_args = new Object[2];
-			System.out.println("main : название входного файла - " + args[1]);
-			System.out.println("main : название выходного файла - " + args[2]);
-			client_args[0] = args[1];
-			client_args[1] = args[2];
+			System.out.println("main : название входного файла - " + args[2]);
+			System.out.println("main : название выходного файла - " + args[3]);
+			client_args[0] = args[2];
+			client_args[1] = args[3];
 
 			// Создание и запуск клиенской части
 			try {

@@ -3,6 +3,10 @@ import java.util.ArrayList;
 public class TouristItem extends  Item {
 	private int count;
 
+	public TouristItem() {
+		super("", -1);
+		this.count = 1;
+	}
 	public TouristItem(String name, int weight) {
 		super(name, weight);
 		this.count = 1;
@@ -40,25 +44,31 @@ public class TouristItem extends  Item {
 		return -1;
 	}
 
-	static int searchByWeight(ArrayList<TouristItem> items, int weight) {
-		int items_count = items.size();
-		for (int i = 0; i < items_count; ++i) {
-			int item_weight = items.get(i).weight;
-			if (item_weight == weight) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
 	// нахождение наибольшего веса, который не превышает заданный
 	public static int searchMaxNotExceed(ArrayList<TouristItem> items, int weight) {
 		int max = -1;
 		int index = -1;
 		for (int i = 0; i < items.size(); ++i) {
-			int item_weight = items.get(i).weight;
+			int item_weight = items.get(i).getWeight();
 			if (item_weight <= weight && item_weight > max) {
 				max = item_weight;
+				index = i;
+			}
+		}
+		return index;
+	}
+
+	// нахождение минимального веса, который не превышает заданный
+	public static int searchMinNotExceed(ArrayList<TouristItem> items, int weight) {
+		if (items.size() < 1) {
+			return -1;
+		}
+		int min = items.get(0).getWeight();
+		int index = -1;
+		for (int i = 0; i < items.size(); ++i) {
+			int item_weight = items.get(i).getWeight();
+			if (item_weight <= weight && item_weight < min) {
+				min = item_weight;
 				index = i;
 			}
 		}
@@ -84,11 +94,15 @@ public class TouristItem extends  Item {
 	}
 
 	public static ArrayList<TouristItem> parseTouristItems(String content) throws Exception {
+		ArrayList<TouristItem> items = new ArrayList<>();
+		if (content.equals("")) {
+			return items;
+		}
+
 		String[] pieces = content.split(" ");
 		if (pieces.length % 3 != 0) {
 			throw new Exception();
 		}
-		ArrayList<TouristItem> items = new ArrayList<>();
 		for (int i = 0; i < pieces.length; i += 3) {
 			String name = pieces[i];
 			try {
@@ -116,6 +130,29 @@ public class TouristItem extends  Item {
 			}
 		}
 		return builder.toString();
+	}
+
+	public static String toString(TouristItem item) {
+		return item.name + " " + item.weight +	" " + item.count;
+	}
+
+	public static TouristItem parseTouristItem(String content) throws Exception {
+		String[] separated = content.split(" ");
+		if (separated.length != 3) {
+			throw new Exception("Invalid tourist item");
+		}
+
+		try {
+			TouristItem item;
+			String name = separated[0];
+			int weight = Integer.parseInt(separated[1]);
+			int count = Integer.parseInt(separated[2]);
+			item = new TouristItem(name, weight, count);
+			return item;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return new TouristItem();
 	}
 
 	public static int getSum(Iterable<TouristItem> items) {

@@ -6,7 +6,8 @@ JADEPATH:= ../lib/jade.jar;.
 JLIBS:= -classpath $(JADEPATH)
 JOPT := -encoding utf-8
 
-HOST := 192.168.56.1
+HOST := localhost
+PORT := 1099
 
 INDIR := ../files/
 NAMES := $(INDIR)names.txt
@@ -19,11 +20,11 @@ all:
 	make clean
 	$(JC) $(JLIBS) *.java $(JOPT)
 
-run_server: Main.class
+server: Main.class
 	$(JRUN) $(JLIBS) Main $(NAMES)
 
-run_client: Main.class
-	$(JRUN) $(JLIBS) Main $(HOST) $(INPUTFILE) $(OUTPUTFILE)
+client: Main.class
+	$(JRUN) $(JLIBS) Main $(HOST) $(PORT) $(INPUTFILE) $(OUTPUTFILE)
 
 clean:
 	del *.class

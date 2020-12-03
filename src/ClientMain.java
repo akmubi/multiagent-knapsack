@@ -1,11 +1,9 @@
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.AgentContainer;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.MessageTemplate.MatchExpression;
-import jade.wrapper.StaleProxyException;
 
 import java.util.ArrayList;
 
@@ -148,6 +146,7 @@ public class ClientMain extends Agent {
 						System.out.println(local_name + ": завершение работы");
 
 						this.myAgent.doDelete();
+
 						this.step = 0;
 					}
 				}
@@ -161,12 +160,6 @@ public class ClientMain extends Agent {
 	}
 
 	protected void takeDown() {
-		try {
-			System.out.println(getLocalName() + ": удаление контейнера...");
-			getContainerController().kill();
-		} catch (StaleProxyException e) {
-			e.printStackTrace();
-		}
 		System.exit(0);
 	}
 }

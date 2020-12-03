@@ -82,8 +82,11 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 			BufferedWriter writer = new BufferedWriter(new FileWriter(output_filename, false));
 			for (TouristData data : tourist_data) {
 				writer.append(data.getName());
-				writer.append(":");
+				writer.append(": (");
 				ArrayList<TouristItem> items = data.getItems();
+				int sum = TouristItem.getSum(items);
+				writer.append(Integer.toString(sum));
+				writer.append(")");
 				for (TouristItem item : items) {
 					writer.append("\n\t");
 					writer.append(item.getName());

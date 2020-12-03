@@ -25,10 +25,6 @@ public class TouristData {
 		return new TouristData(this.name, TouristItem.zip(this.items));
 	}
 
-	public TouristData getUpzipped() {
-		return new TouristData(this.name, TouristItem.unzip(this.items));
-	}
-
 	public static String toString(TouristData data) {
 		return data.name + " " + TouristItem.toString(data.items);
 	}

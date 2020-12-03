@@ -109,7 +109,11 @@ class TouristBehaviour extends SimpleBehaviour {
 				if (this.laps_count % (this.tourists_count + 1) == this.tourist_id) {
 					// отправка запросов
 					println("отправка запросов (laps = " + this.laps_count + ", index = " + this.tourist_id + ")");
-					this.step = 2;
+					if (this.done) {
+						this.step = 6;
+					} else {
+						this.step = 2;
+					}
 					this.current_tourists = tourists;
 				} else {
 					// обработка запросов
@@ -118,12 +122,6 @@ class TouristBehaviour extends SimpleBehaviour {
 				}
 			}
 			case 2 -> {
-				int sum = TouristItem.getSum(this.items);
-				if (sum == (int)this.average) {
-					this.step = 6;
-					break;
-				}
-
 				TouristItem current_item = this.items.get(0);
 				int difference = (int)this.average - (sum - current_item.getWeight());
 				println("текущая разница - " + difference);
@@ -188,7 +186,7 @@ class TouristBehaviour extends SimpleBehaviour {
 						skip_message.addReceiver(reply.getSender());
 					}
 					this.myAgent.send(skip_message);
-					this.step = 1;
+					this.step = 1; 
 				} else {
 					println("лучший вес - " + best_weight + " от " + best_sender.getLocalName());
 					ACLMessage answer;

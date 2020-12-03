@@ -92,9 +92,9 @@ public class DefaultIOReaderWriter implements IOReaderWriter {
 					writer.append(item.getName());
 					writer.append(" ");
 					writer.append(Integer.toString(item.getWeight()));
-					writer.append(" ");
 					int item_count = item.getCount();
 					if (item_count > 1) {
+						writer.append(" ");
 						writer.append(Integer.toString(item_count));
 					}
 				}

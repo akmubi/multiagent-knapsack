@@ -91,10 +91,17 @@ class TouristBehaviour extends SimpleBehaviour {
 				println("туристов на данный момент - " + this.tourists_count);
 
 				AID[] done_tourists = DFUtilities.searchService(this.myAgent, "done");
-				println("done туристов - " + done_tourists.length);
-				if (done_tourists.length == this.tourists_count) {
-					this.step = 0;
-					break;
+				if (this.done) {
+					if (done_tourists.length == this.tourists_count + 1) {
+						this.step = 0;
+						break;
+					}
+				} else {
+					println("done туристов - " + done_tourists.length);
+					if (done_tourists.length == this.tourists_count) {
+						this.step = 0;
+						break;
+					}
 				}
 
 				// вычисление суммы предметов
@@ -123,6 +130,7 @@ class TouristBehaviour extends SimpleBehaviour {
 			}
 			case 2 -> {
 				TouristItem current_item = this.items.get(0);
+				int sum = TouristItem.getSum(this.items);
 				int difference = (int)this.average - (sum - current_item.getWeight());
 				println("текущая разница - " + difference);
 
@@ -244,8 +252,7 @@ class TouristBehaviour extends SimpleBehaviour {
 					String conversation_id = message.getConversationId();
 					String content = message.getContent();
 					if (performative == ACLMessage.CFP) {
-						int sum = TouristItem.getSum(this.items);
-						if (sum == (int)this.average) {
+						if (this.done) {
 							ACLMessage reply = new ACLMessage(ACLMessage.REFUSE);
 							reply.addReceiver(message.getSender());
 							this.myAgent.send(reply);

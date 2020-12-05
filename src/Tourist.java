@@ -78,6 +78,7 @@ class TouristBehaviour extends SimpleBehaviour {
 		for (AID tourist : tourists) {
 			skip_message.addReceiver(tourist);
 		}
+		skip_message.setConversationId("cancel");
 		println("отправка команды на завершение круга " + tourists.length + " туристам");
 		this.myAgent.send(skip_message);
 	}
@@ -91,18 +92,14 @@ class TouristBehaviour extends SimpleBehaviour {
 				println("туристов на данный момент - " + this.tourists_count);
 
 				AID[] done_tourists = DFUtilities.searchService(this.myAgent, "done");
-				if (this.done) {
-					if (done_tourists.length == this.tourists_count + 1) {
-						this.step = 0;
-						break;
-					}
-				} else {
-					println("done туристов - " + done_tourists.length);
+				if (!this.done) {
 					if (done_tourists.length == this.tourists_count) {
-						this.step = 0;
-						break;
+						DFUtilities.addService(this.myAgent, "done");
+						this.done = true;
 					}
 				}
+
+				println("done туристов - " + done_tourists.length);
 
 				// вычисление суммы предметов
 				int sum = TouristItem.getSum(this.items);
@@ -117,7 +114,17 @@ class TouristBehaviour extends SimpleBehaviour {
 					// отправка запросов
 					println("отправка запросов (laps = " + this.laps_count + ", index = " + this.tourist_id + ")");
 					if (this.done) {
-						this.step = 6;
+						if (done_tourists.length == this.tourists_count + 1) {
+							ACLMessage shutdown_message = new ACLMessage(ACLMessage.CANCEL);
+							for (AID tourist : done_tourists) {
+								shutdown_message.addReceiver(tourist);
+							}
+							shutdown_message.setConversationId("shutdown");
+							this.myAgent.send(shutdown_message);
+							this.step = 0;
+						} else {
+							this.step = 6;
+						}
 					} else {
 						this.step = 2;
 					}
@@ -193,6 +200,7 @@ class TouristBehaviour extends SimpleBehaviour {
 					for (ACLMessage reply : this.replies) {
 						skip_message.addReceiver(reply.getSender());
 					}
+					skip_message.setConversationId("cancel");
 					this.myAgent.send(skip_message);
 					this.step = 1; 
 				} else {
@@ -296,9 +304,13 @@ class TouristBehaviour extends SimpleBehaviour {
 						this.global_data.remove(this.myAgent.getName() + sender.getName());
 						this.items.remove(index);
 					} else if (performative == ACLMessage.CANCEL) {
-						println("завершение круга...");
-						this.laps_count++;
-						this.step = 1;
+						if (conversation_id.equals("cancel")) {
+							println("завершение круга...");
+							this.laps_count++;
+							this.step = 1;
+						} else if (conversation_id.equals("shutdown")) {
+							this.step = 0;
+						}
 					} else if (performative == ACLMessage.INFORM) {
 						try {
 							println("получен предмет " + message.getContent() + ". Добавление");
